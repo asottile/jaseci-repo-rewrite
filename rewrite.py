@@ -35,62 +35,17 @@ def commit_by_msg(msg: str) -> str:
     return out.strip()
 
 
-def _fixup_backward_merge() -> None:
-    msg = "Merge branch 'repo_reorg' into jaccloud"
-
-    def _parents_order() -> str:
-        c = commit_by_msg(msg)
-        return runo(
-            'git', 'show', '--no-patch', '--format=%s',
-            f'{c}^1', f'{c}^2',
-        )
-
-    assert _parents_order() == '''\
-big move
-fixed github stuff
-'''
-
-    callback = f'''\
-  if commit.original_id == {commit_by_msg(msg).encode()!r}:
-    assert len(commit.parents) == 2, vars(commit)
-    commit.parents.reverse()
-'''
-    run(GIT_FILTER_REPO, '--commit-callback', callback)
-
-    # check we were successful
-    assert _parents_order() == '''\
-fixed github stuff
-big move
-'''
-
-
-def reachable_tags() -> list[str]:
-    head = runo('git', 'rev-parse', 'HEAD').strip()
-
-    merged_out = runo('git', 'tag', '--merged', 'HEAD')
-    merged_tags = frozenset(merged_out.splitlines())
-
-    forked_tags = [*sorted(merged_tags)]
-    for tag in runo('git', 'tag').splitlines():
-        if tag in merged_tags:
-            continue
-        try:
-            merge_base = runo('git', 'merge-base', tag, 'HEAD').strip()
-        except subprocess.CalledProcessError:
-            continue
-        else:
-            if merge_base == head:
-                continue
-            else:
-                forked_tags.append(tag)
-    return forked_tags
+def _delete_other_refs() -> None:
+    run('git', 'remote', 'rm', 'origin')
+    tags = runo('git', 'tag', '--list').splitlines()
+    run('git', 'tag', '-d', *tags)
 
 
 @contextlib.contextmanager
 def _branch(cid: str, name: str) -> Generator[tuple[str, ...]]:
     orig = runo('git', 'rev-parse', cid).strip()
     run('git', 'checkout', orig, '-b', name)
-    yield (GIT_FILTER_REPO, '--force', '--refs', 'HEAD', *reachable_tags())
+    yield (GIT_FILTER_REPO, '--force', '--refs', 'HEAD')
 
     run('git', 'checkout', 'main')
     run('git', 'replace', orig, name)
@@ -128,7 +83,7 @@ def _rename_jaseci_v1() -> None:
 
 def _trailing_rewrites() -> None:
     removals = '''\
-# v1 workflows
+# v1 files
 .github/ISSUE_TEMPLATE/bug_report.md
 .github/ISSUE_TEMPLATE/feature_request.md
 .github/workflows/black.yml
@@ -142,7 +97,6 @@ def _trailing_rewrites() -> None:
 .github/workflows/jaseci-core-test.yml
 .github/workflows/jaseci-serv-test.yml
 .github/workflows/jaseci-studio-test.yml
-# rm _v1 entirely!
 _v1
 # large things
 docs/book_html
@@ -154,6 +108,19 @@ support/vscode_ext/jac/jac-0.0.1.vsix
 # trash
 docs/book/book.synctex(busy)
 .github/archived_workflows
+# removed
+jac-cloud
+# compiled playground removed
+docs/docs/playground/assets
+docs/docs/playground/favicon.ico
+docs/docs/playground/index.html
+docs/docs/playground/jac_examples.json
+docs/docs/playground/jaseci.png
+docs/docs/playground/language-configuration.json
+docs/docs/playground/language-reference.json
+docs/docs/playground/onigasm.wasm
+docs/docs/playground/python
+docs/docs/playground/robots.txt
 '''
     run(
         GIT_FILTER_REPO,
@@ -182,19 +149,79 @@ def _squash_prs() -> None:
     run(GIT_FILTER_REPO, '--commit-callback', callback)
 
 
+def _rename_jaclang() -> None:
+    c = commit_by_msg('bringing jaclang over')
+
+    with _branch(f'{c}^', 'jaclang-rewrite') as rewrite:
+        run(*rewrite, '--to-subdirectory-filter=jac')
+        run(
+            *rewrite,
+            '--path-rename=jac/.github:.github',
+            '--path-rename=jac/jac:jac/jaclang',
+        )
+
+
+def _typeshed_was_always_a_submodule() -> None:
+    c = commit_by_msg('Merge pull request #2160 from jaseci-labs/type_01')
+
+    env = {**os.environ, 'GIT_EDITOR': 'sed -i "0,/pick/s//edit/"'}
+    cmd = ('git', 'rebase', '-i', f'{c}^')
+    print(f'+ {shlex.join(cmd)}')
+    subprocess.check_call(cmd, env=env)
+
+    run('git', 'rm', '-r', 'jac/jaclang/vendor/typeshed')
+    run(
+        'git', 'submodule', 'add',
+        'https://github.com/python/typeshed', 'jac/jaclang/vendor/typeshed',
+    )
+
+    run(
+        'git', '-C', 'jac/jaclang/vendor/typeshed',
+        'checkout', 'df3b5f3cdd7736079ad3124db244e4553625590c',
+    )
+
+    run('git', 'add', 'jac/jaclang/vendor/typeshed')
+    run('git', 'commit', '--amend', '--no-edit')
+    # should fail with conflict!
+    assert subprocess.call(('git', 'rebase', '--continue'))
+    # make sure we're resolving the correct one
+    out = runo('git', 'status', '--porcelain', '--', 'jac')
+    assert out == 'AA jac/jaclang/vendor/typeshed\n', out
+    run(
+        'git', '-C', 'jac/jaclang/vendor/typeshed',
+        'checkout', 'bbbf7530a987e59c8458127351cacad2e57f04bf',
+    )
+    run('git', 'add', 'jac/jaclang/vendor/typeshed')
+    run('git', 'commit', '--no-edit')
+    run('git', 'rebase', '--continue')
+
+
+def _more_deletions() -> None:
+    run(
+        GIT_FILTER_REPO,
+        '--path=jac/support/vscode_ext',
+        '--path=jac/jaclang/vendor/mypy/typeshed',
+        '--invert-paths',
+    )
+
+
 def main() -> int:
     run('rm', '-rf', 'jaseci')
     run('cp', '-r', 'original', 'jaseci')
 
     with cd('jaseci'):
-        _fixup_backward_merge()
+        _delete_other_refs()
         _rename_mtllm()
         _rename_jac_cloud()
         _rename_jaseci_v1()
         _trailing_rewrites()
         _squash_prs()
+        # idk why this has to be at the end? haunted?
+        _rename_jaclang()
+        _typeshed_was_always_a_submodule()
+        _more_deletions()
 
-    run('du', '-hs', 'original/.git', 'jaseci/.git')
+    run('du', '--exclude', 'modules', '-hs', 'original/.git', 'jaseci/.git')
     run('git', '-C', 'original', 'rev-list', '--count', '--all')
     run('git', '-C', 'jaseci', 'rev-list', '--count', '--all')
     return 0
