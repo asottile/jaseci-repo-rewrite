@@ -217,6 +217,12 @@ def _more_deletions() -> None:
     )
 
 
+def _one_git_root() -> None:
+    c = commit_by_msg("Merge branch 'mtllm' into repo_reorg")
+    with _branch(f'{c}^2', 'rebase-mtllm'):
+        run('git', 'rebase', '--rebase-merges=rebase-cousins', f'{c}^1')
+
+
 def main() -> int:
     run('rm', '-rf', 'jaseci')
     run('cp', '-r', 'original', 'jaseci')
@@ -232,6 +238,7 @@ def main() -> int:
         _rename_jaclang()
         _typeshed_was_always_a_submodule()
         _more_deletions()
+        _one_git_root()
 
     run('du', '--exclude', 'modules', '-hs', 'original/.git', 'jaseci/.git')
     run('git', '-C', 'original', 'rev-list', '--count', '--all')
