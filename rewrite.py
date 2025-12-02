@@ -100,8 +100,17 @@ def _trailing_rewrites() -> None:
 _v1
 # large things
 docs/book_html
+docs/docs/assets/playground_demo.gif
 docs/docs/assets/playground_demo.mp4
+docs/docs/assets/photo.jpg
+docs/docs/learn/examples/littleX/images
+docs/docs/examples/littleX/images
+jac/support/jac-lang.org/docs/examples/littleX/images
+jac/support/jac-lang.org/docs/learn/littleX/images
+docs/docs/learn/examples/rag_chatbot/solution/docs/clinical_medicine.pdf
+docs/docs/assets/runtime.gif
 docs/docs/assets/vsce/jaclang-extension-2025.7.17.vsix
+docs/docs/learn/examples/mtp_examples/assets/rpg_demo.gif
 docs/docs/learn/examples/mtp_examples/assets/rpg_demo.mp4
 jac/support/jac-lang.org/docs/assets/mtllm demo.mp4
 support/vscode_ext/jac/jac-0.0.1.vsix
@@ -121,6 +130,9 @@ docs/docs/playground/language-reference.json
 docs/docs/playground/onigasm.wasm
 docs/docs/playground/python
 docs/docs/playground/robots.txt
+# codedoc (removed!)
+jac-byllm/docs/.codedoc
+jac-byllm/docs/docs/assets
 '''
     run(
         GIT_FILTER_REPO,
