@@ -103,22 +103,30 @@ docs/book_html
 docs/docs/assets/playground_demo.gif
 docs/docs/assets/playground_demo.mp4
 docs/docs/assets/photo.jpg
+docs/docs/assets/byLLM_name_logo.png
+docs/docs/assets/byLLM Logo.png
 docs/docs/learn/examples/littleX/images
 docs/docs/examples/littleX/images
 jac/support/jac-lang.org/docs/examples/littleX/images
 jac/support/jac-lang.org/docs/learn/littleX/images
-docs/docs/learn/examples/rag_chatbot/solution/docs/clinical_medicine.pdf
+docs/docs/assets/p2_arch.png
 docs/docs/assets/runtime.gif
 docs/docs/assets/vsce/jaclang-extension-2025.7.17.vsix
 docs/docs/learn/examples/mtp_examples/assets/rpg_demo.gif
 docs/docs/learn/examples/mtp_examples/assets/rpg_demo.mp4
 jac/support/jac-lang.org/docs/assets/mtllm demo.mp4
 support/vscode_ext/jac/jac-0.0.1.vsix
+jac-byllm/poetry.lock
+# pngs in trenchcoats
+jac-scale/assets/jac-scale-architecture.svg
+jac_client/docs/assets
+jac-client/jac_client/docs/assets
 # trash
 docs/book/book.synctex(busy)
 .github/archived_workflows
 # removed
 jac-cloud
+jac-splice-orc
 # compiled playground removed
 docs/docs/playground/assets
 docs/docs/playground/favicon.ico
@@ -130,6 +138,7 @@ docs/docs/playground/language-reference.json
 docs/docs/playground/onigasm.wasm
 docs/docs/playground/python
 docs/docs/playground/robots.txt
+jac/support/jac-lang.org/docs/playground/assets
 # codedoc (removed!)
 jac-byllm/docs/.codedoc
 jac-byllm/docs/docs/assets
@@ -145,7 +154,11 @@ jac-byllm/docs/docs/assets
             if not p.startswith('#')
         ),
         # this funny file has control characters in its name
-        '--path-glob', 't.replace*',
+        '--path-glob=t.replace*',
+        '--path-glob=*/clinical_medicine.pdf',
+        '--path-glob=jac/examples/rpg_game/Diagrams/Jac_impl*.png',
+        '--path-glob=*/rag_chatbot/images/*.png',
+        '--path-glob=*/rag_chatbot_need_fixing/images/*.png',
         '--invert-paths',
     )
 
@@ -212,7 +225,15 @@ def _more_deletions() -> None:
     run(
         GIT_FILTER_REPO,
         '--path=jac/support/vscode_ext',
-        '--path=jac/jaclang/vendor/mypy/typeshed',
+        '--path=jac/jaclang/vendor/bin',
+        '--path=jac/jaclang/vendor/mypyc',
+        '--path=jac/jaclang/vendor/mypy',
+        '--path-glob=jac/jaclang/vendor/mypy-*.dist-info',
+        '--path=jac/examples/rpg_game/Diagrams',
+        '--path=jac/jaclang/compiler/larkparse',
+        '--path=jac/support/jac-lang.org/docs/learn/tutorial/images',
+        '--path-glob=jac/examples/rpg_game/jac_impl/RPG Space*.png',
+        '--path-glob=jac/examples/rpg_game/*/img/*.png',
         '--invert-paths',
     )
 
