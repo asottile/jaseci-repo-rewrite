@@ -186,11 +186,16 @@ def _rename_jaclang() -> None:
         )
 
 
+PRESERVE_COMMITTER = (
+    '-c', 'rebase.instructionFormat=%s%nexec GIT_COMMITTER_DATE="%cD" GIT_COMMITTER_NAME="%cn" GIT_COMMITTER_EMAIL="%ce" git commit --amend --no-edit --allow-empty',  # noqa: E501
+)
+
+
 def _typeshed_was_always_a_submodule() -> None:
     c = commit_by_msg('Merge pull request #2160 from jaseci-labs/type_01')
 
     env = {**os.environ, 'GIT_EDITOR': 'sed -i "0,/pick/s//edit/"'}
-    cmd = ('git', 'rebase', '-i', f'{c}^')
+    cmd = ('git', *PRESERVE_COMMITTER, 'rebase', '-i', f'{c}^')
     print(f'+ {shlex.join(cmd)}')
     subprocess.check_call(cmd, env=env)
 
@@ -208,7 +213,9 @@ def _typeshed_was_always_a_submodule() -> None:
     run('git', 'add', 'jac/jaclang/vendor/typeshed')
     run('git', 'commit', '--amend', '--no-edit')
     # should fail with conflict!
-    assert subprocess.call(('git', 'rebase', '--continue'))
+    assert subprocess.call(
+        ('git', *PRESERVE_COMMITTER, 'rebase', '--continue'),
+    )
     # make sure we're resolving the correct one
     out = runo('git', 'status', '--porcelain', '--', 'jac')
     assert out == 'AA jac/jaclang/vendor/typeshed\n', out
@@ -218,7 +225,7 @@ def _typeshed_was_always_a_submodule() -> None:
     )
     run('git', 'add', 'jac/jaclang/vendor/typeshed')
     run('git', 'commit', '--no-edit')
-    run('git', 'rebase', '--continue')
+    run('git', *PRESERVE_COMMITTER, 'rebase', '--continue')
 
 
 def _more_deletions() -> None:
@@ -241,7 +248,10 @@ def _more_deletions() -> None:
 def _one_git_root() -> None:
     c = commit_by_msg("Merge branch 'mtllm' into repo_reorg")
     with _branch(f'{c}^2', 'rebase-mtllm'):
-        run('git', 'rebase', '--rebase-merges=rebase-cousins', f'{c}^1')
+        run(
+            'git', *PRESERVE_COMMITTER, 'rebase',
+            '--rebase-merges=rebase-cousins', f'{c}^1',
+        )
 
 
 def main() -> int:
